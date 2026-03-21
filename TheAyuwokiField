@@ -32,43 +32,39 @@ local function getRoot()
     end
 end
 
+-- ================= ESP ITEM =================
 local function isValidItemPrompt(prompt)
-    if not prompt then return false end
-    if not prompt.Enabled then return false end
-
+    if not prompt or not prompt.Enabled then return false end
     local text = prompt.ActionText
-    if ITEM_MAP[text] then return true end
 
-    if string.find(string.lower(text), "tomar") then
-        if not string.find(string.lower(text), "puerta") then
-            return true
-        end
+    if ITEM_MAP[text] then return true end
+    if string.find(string.lower(text),"tomar") and not string.find(string.lower(text),"puerta") then
+        return true
     end
 
     return false
 end
 
-local function createESP(part, textName)
+local function createESP(part,textName)
     if not ESP_ENABLED then return end
     if not part or not part:IsA("BasePart") then return end
     if part:FindFirstChild(ESP_TAG) then return end
 
-    local bill = Instance.new("BillboardGui")
+    local bill = Instance.new("BillboardGui",part)
     bill.Name = ESP_TAG
     bill.Adornee = part
     bill.Size = UDim2.new(0,200,0,50)
     bill.AlwaysOnTop = true
     bill.StudsOffset = Vector3.new(0,2,0)
     bill.MaxDistance = MAX_DISTANCE
-    bill.Parent = part
 
-    local text = Instance.new("TextLabel", bill)
-    text.Size = UDim2.new(1,0,1,0)
-    text.BackgroundTransparency = 1
-    text.TextColor3 = Color3.fromRGB(0,255,0)
-    text.TextStrokeTransparency = 0
-    text.TextScaled = true
-    text.Text = textName
+    local txt = Instance.new("TextLabel",bill)
+    txt.Size = UDim2.new(1,0,1,0)
+    txt.BackgroundTransparency = 1
+    txt.TextColor3 = Color3.fromRGB(0,255,0)
+    txt.TextStrokeTransparency = 0
+    txt.TextScaled = true
+    txt.Text = textName
 
     tracked[part] = true
 end
@@ -87,7 +83,7 @@ local function clearAllESP()
 end
 
 local function getPrompt(part)
-    for _, v in pairs(part:GetDescendants()) do
+    for _,v in pairs(part:GetDescendants()) do
         if v:IsA("ProximityPrompt") and isValidItemPrompt(v) then
             return v
         end
@@ -95,11 +91,11 @@ local function getPrompt(part)
 end
 
 local function scanAll()
-    for _, v in pairs(Workspace:GetDescendants()) do
+    for _,v in pairs(Workspace:GetDescendants()) do
         if v:IsA("ProximityPrompt") and isValidItemPrompt(v) then
-            local part = v.Parent
+            local part=v.Parent
             if part and part:IsA("BasePart") then
-                createESP(part, v.ActionText)
+                createESP(part,v.ActionText)
             end
         end
     end
@@ -111,9 +107,9 @@ Workspace.DescendantAdded:Connect(function(v)
     if v:IsA("ProximityPrompt") then
         task.wait(0.1)
         if isValidItemPrompt(v) then
-            local part = v.Parent
+            local part=v.Parent
             if part and part:IsA("BasePart") then
-                createESP(part, v.ActionText)
+                createESP(part,v.ActionText)
             end
         end
     end
@@ -124,28 +120,28 @@ task.spawn(function()
         task.wait(2)
 
         if not ESP_ENABLED then continue end
-        local root = getRoot()
+        local root=getRoot()
         if not root then continue end    
 
         for part,_ in pairs(tracked) do    
             if not part or not part.Parent then    
                 removeESP(part)    
             else    
-                local prompt = getPrompt(part)    
+                local prompt=getPrompt(part)    
 
                 if not prompt then    
                     removeESP(part)    
                 else    
-                    local dist = (root.Position - part.Position).Magnitude    
+                    local dist=(root.Position-part.Position).Magnitude    
 
-                    if dist > MAX_DISTANCE then    
+                    if dist>MAX_DISTANCE then    
                         removeESP(part)    
                     else    
-                        local gui = part:FindFirstChild(ESP_TAG)    
+                        local gui=part:FindFirstChild(ESP_TAG)    
                         if gui then    
-                            local label = gui:FindFirstChildOfClass("TextLabel")    
+                            local label=gui:FindFirstChildOfClass("TextLabel")    
                             if label then    
-                                label.Text = prompt.ActionText .. " [" .. math.floor(dist) .. "m]"    
+                                label.Text=prompt.ActionText.." ["..math.floor(dist).."m]"    
                             end    
                         end    
                     end    
@@ -155,13 +151,13 @@ task.spawn(function()
     end
 end)
 
--- AYUWOKI TRACK
+-- ================= AYUWOKI ESP =================
 local ayuwokiList = {}
 
-Workspace.DescendantAdded:Connect(function(v)
-    if v:IsA("Model") and string.find(string.lower(v.Name),"ayuwoki") then
-        ayuwokiList[v] = true
+local function addAyuwoki(v)
+    ayuwokiList[v] = true
 
+    if not v:FindFirstChild("_ayuwoki") then
         local h = Instance.new("Highlight")
         h.Name = "_ayuwoki"
         h.Adornee = v
@@ -172,39 +168,62 @@ Workspace.DescendantAdded:Connect(function(v)
         h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         h.Parent = v
     end
+end
+
+-- scan sẵn
+for _,v in pairs(Workspace:GetDescendants()) do
+    if v:IsA("Model") and string.find(string.lower(v.Name),"ayuwoki") then
+        addAyuwoki(v)
+    end
+end
+
+-- spawn sau
+Workspace.DescendantAdded:Connect(function(v)
+    if v:IsA("Model") and string.find(string.lower(v.Name),"ayuwoki") then
+        addAyuwoki(v)
+    end
 end)
 
--- AIM LOCK
+-- ================= AIM SNAP =================
 RunService.RenderStepped:Connect(function()
     if not AIM_ENABLED then return end
+
     local root = getRoot()
     if not root then return end
 
-    local closest = nil
-    local dist = math.huge
+    local closest=nil
+    local dist=math.huge
 
     for m,_ in pairs(ayuwokiList) do
         if m and m.Parent then
-            local hrp = m:FindFirstChild("HumanoidRootPart")
+            local hrp=m:FindFirstChild("HumanoidRootPart")
             if hrp then
-                local d = (root.Position - hrp.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    closest = hrp
+                local d=(root.Position-hrp.Position).Magnitude
+                if d<dist then
+                    dist=d
+                    closest=hrp
                 end
             end
         end
     end
 
     if closest then
+        -- SNAP CAMERA
         camera.CFrame = CFrame.new(camera.CFrame.Position, closest.Position)
+
+        -- SNAP PLAYER
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame =
+                CFrame.new(char.HumanoidRootPart.Position, closest.Position)
+        end
     end
 end)
 
--- WARNING GUI
-local warnGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+-- ================= GUI =================
+local gui = Instance.new("ScreenGui",player:WaitForChild("PlayerGui"))
 
-local warn = Instance.new("TextLabel", warnGui)
+local warn = Instance.new("TextLabel", gui)
 warn.Size = UDim2.new(0,300,0,60)
 warn.Position = UDim2.new(0.5,-150,0,120)
 warn.TextScaled = true
@@ -216,31 +235,30 @@ task.spawn(function()
     while true do
         task.wait(0.5)
 
-        local root = getRoot()
+        local root=getRoot()
         if not root then continue end
 
-        local near = false    
+        local near=false
+        for m,_ in pairs(ayuwokiList) do
+            if m and m.Parent then
+                local hrp=m:FindFirstChild("HumanoidRootPart")
+                if hrp and (root.Position-hrp.Position).Magnitude<AYUWOKI_WARN_DISTANCE then
+                    near=true
+                end
+            end
+        end
 
-        for m,_ in pairs(ayuwokiList) do    
-            if m and m.Parent then    
-                local hrp = m:FindFirstChild("HumanoidRootPart")    
-                if hrp and (root.Position - hrp.Position).Magnitude < AYUWOKI_WARN_DISTANCE then    
-                    near = true    
-                end    
-            end    
-        end    
-
-        warn.Visible = near    
-        warn.Text = "⚠ AYUWOKI NEAR ⚠"
+        warn.Visible=near
+        warn.Text="⚠ AYUWOKI NEAR ⚠"
     end
 end)
 
--- TIMER (NGÀY / ĐÊM)
+-- TIMER
 local values = ReplicatedStorage:WaitForChild("Values")
 local timer = values:WaitForChild("Timer")
 local day = values:WaitForChild("DayTheme")
 
-local label = Instance.new("TextLabel", warnGui)
+local label = Instance.new("TextLabel", gui)
 label.Size = UDim2.new(0,260,0,60)
 label.Position = UDim2.new(0.5,-130,0,50)
 label.TextScaled = true
@@ -256,48 +274,44 @@ update()
 timer:GetPropertyChangedSignal("Value"):Connect(update)
 day:GetPropertyChangedSignal("Value"):Connect(update)
 
--- BUTTONS
-local btn = Instance.new("TextButton", warnGui)
+-- BUTTON ESP
+local btn = Instance.new("TextButton", gui)
 btn.Size = UDim2.new(0,120,0,40)
 btn.Position = UDim2.new(0,20,0,100)
 btn.Text = "ESP: ON"
 btn.BackgroundColor3 = Color3.fromRGB(0,170,0)
-btn.TextColor3 = Color3.new(1,1,1)
 
 btn.MouseButton1Click:Connect(function()
     ESP_ENABLED = not ESP_ENABLED
-
     if ESP_ENABLED then
-        btn.Text = "ESP: ON"
-        btn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+        btn.Text="ESP: ON"
+        btn.BackgroundColor3=Color3.fromRGB(0,170,0)
         scanAll()
     else
-        btn.Text = "ESP: OFF"
-        btn.BackgroundColor3 = Color3.fromRGB(170,0,0)
+        btn.Text="ESP: OFF"
+        btn.BackgroundColor3=Color3.fromRGB(170,0,0)
         clearAllESP()
     end
 end)
 
--- AIM BUTTON
-local aimBtn = Instance.new("TextButton", warnGui)
+-- BUTTON AIM
+local aimBtn = Instance.new("TextButton", gui)
 aimBtn.Size = UDim2.new(0,120,0,40)
 aimBtn.Position = UDim2.new(0,20,0,150)
 aimBtn.Text = "AIM: OFF"
 aimBtn.BackgroundColor3 = Color3.fromRGB(170,0,0)
-aimBtn.TextColor3 = Color3.new(1,1,1)
 
 aimBtn.MouseButton1Click:Connect(function()
     AIM_ENABLED = not AIM_ENABLED
-
     if AIM_ENABLED then
-        aimBtn.Text = "AIM: ON"
-        aimBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+        aimBtn.Text="AIM: ON"
+        aimBtn.BackgroundColor3=Color3.fromRGB(0,170,0)
     else
-        aimBtn.Text = "AIM: OFF"
-        aimBtn.BackgroundColor3 = Color3.fromRGB(170,0,0)
+        aimBtn.Text="AIM: OFF"
+        aimBtn.BackgroundColor3=Color3.fromRGB(170,0,0)
     end
 end)
 
 scanAll()
 
-print("ULTIMATE ESP + AIM + TIMER READY")
+print("FULL SNAP AIM + ESP + TIMER READY")
