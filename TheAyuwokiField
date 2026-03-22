@@ -32,16 +32,13 @@ local function getRoot()
     end
 end
 
--- ================= ESP ITEM =================
 local function isValidItemPrompt(prompt)
     if not prompt or not prompt.Enabled then return false end
     local text = prompt.ActionText
-
     if ITEM_MAP[text] then return true end
     if string.find(string.lower(text),"tomar") and not string.find(string.lower(text),"puerta") then
         return true
     end
-
     return false
 end
 
@@ -103,7 +100,6 @@ end
 
 Workspace.DescendantAdded:Connect(function(v)
     if not ESP_ENABLED then return end
-
     if v:IsA("ProximityPrompt") then
         task.wait(0.1)
         if isValidItemPrompt(v) then
@@ -118,7 +114,6 @@ end)
 task.spawn(function()
     while true do
         task.wait(2)
-
         if not ESP_ENABLED then continue end
         local root=getRoot()
         if not root then continue end    
@@ -151,12 +146,10 @@ task.spawn(function()
     end
 end)
 
--- ================= AYUWOKI ESP =================
 local ayuwokiList = {}
 
 local function addAyuwoki(v)
     ayuwokiList[v] = true
-
     if not v:FindFirstChild("_ayuwoki") then
         local h = Instance.new("Highlight")
         h.Name = "_ayuwoki"
@@ -170,21 +163,18 @@ local function addAyuwoki(v)
     end
 end
 
--- scan sẵn
 for _,v in pairs(Workspace:GetDescendants()) do
     if v:IsA("Model") and string.find(string.lower(v.Name),"ayuwoki") then
         addAyuwoki(v)
     end
 end
 
--- spawn sau
 Workspace.DescendantAdded:Connect(function(v)
     if v:IsA("Model") and string.find(string.lower(v.Name),"ayuwoki") then
         addAyuwoki(v)
     end
 end)
 
--- ================= AIM SNAP =================
 RunService.RenderStepped:Connect(function()
     if not AIM_ENABLED then return end
 
@@ -208,10 +198,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     if closest then
-        -- SNAP CAMERA
         camera.CFrame = CFrame.new(camera.CFrame.Position, closest.Position)
-
-        -- SNAP PLAYER
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             char.HumanoidRootPart.CFrame =
@@ -220,7 +207,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ================= GUI =================
 local gui = Instance.new("ScreenGui",player:WaitForChild("PlayerGui"))
 
 local warn = Instance.new("TextLabel", gui)
@@ -234,10 +220,8 @@ warn.Visible = false
 task.spawn(function()
     while true do
         task.wait(0.5)
-
         local root=getRoot()
         if not root then continue end
-
         local near=false
         for m,_ in pairs(ayuwokiList) do
             if m and m.Parent then
@@ -247,13 +231,11 @@ task.spawn(function()
                 end
             end
         end
-
         warn.Visible=near
         warn.Text="⚠ AYUWOKI NEAR ⚠"
     end
 end)
 
--- TIMER
 local values = ReplicatedStorage:WaitForChild("Values")
 local timer = values:WaitForChild("Timer")
 local day = values:WaitForChild("DayTheme")
@@ -274,7 +256,6 @@ update()
 timer:GetPropertyChangedSignal("Value"):Connect(update)
 day:GetPropertyChangedSignal("Value"):Connect(update)
 
--- BUTTON ESP
 local btn = Instance.new("TextButton", gui)
 btn.Size = UDim2.new(0,120,0,40)
 btn.Position = UDim2.new(0,20,0,100)
@@ -294,7 +275,6 @@ btn.MouseButton1Click:Connect(function()
     end
 end)
 
--- BUTTON AIM
 local aimBtn = Instance.new("TextButton", gui)
 aimBtn.Size = UDim2.new(0,120,0,40)
 aimBtn.Position = UDim2.new(0,20,0,150)
@@ -312,6 +292,18 @@ aimBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+task.spawn(function()
+    local event = ReplicatedStorage:WaitForChild("Events"):WaitForChild("AddStamina")
+    while true do
+        task.wait(0.2)
+        pcall(function()
+            if event and event.OnClientEvent then
+                firesignal(event.OnClientEvent, 40)
+            end
+        end)
+    end
+end)
+
 scanAll()
 
-print("FULL SNAP AIM + ESP + TIMER READY")
+print("FULL SNAP AIM + ESP + TIMER + STAMINA READY")
